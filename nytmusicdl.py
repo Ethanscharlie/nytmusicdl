@@ -159,8 +159,6 @@ def search_music(search_term: str) -> [AlbumInfo]:
 
     return responses
 
-
-
 def main():
     album_info = search_music(sys.argv[1])[0]
 

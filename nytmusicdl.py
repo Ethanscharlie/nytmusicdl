@@ -13,14 +13,13 @@ import moviepy.editor as mp
 import mutagen
 import requests
 import wget
+import sys
 
 from mutagen.easyid3 import EasyID3
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, APIC
 
 from PIL import Image
-
-from AlbumInfo import AlbumInfo
 
 VIDEO_FILE_EXT = "mp4"
 AUDIO_FILE_EXT = "mp3"
@@ -114,9 +113,10 @@ class AlbumInfo:
         current_directory = os.getcwd()
         os.system(f"cd {folder}")
 
-        command = f'yt-dlp -x --audio-format mp3 -o "{folder}/{filename}.%(ext)s" {url}'
-        print(command)
-        os.system(command)
+        if str(filename) != "<class 'str'>":
+            command = f'yt-dlp -x --audio-format mp3 -o "{folder}/{filename}.%(ext)s" {url}'
+            print(command)
+            os.system(command)
 
         os.system(f"cd {current_directory}")
 
@@ -126,7 +126,18 @@ def get_tracklist(url: str):
     if response.status_code != 200:
         raise Exception(responses.status_code)
     
-    return [track["title"] for track in response.json()["data"]] 
+    tracklist = [str]
+    for track in response.json()["data"]:
+        trackname = track["title"]
+
+        if not trackname:
+            continue
+
+        trackname = trackname.replace(r"/", "|")
+        tracklist.append(trackname)
+        print(trackname)
+
+    return tracklist
 
 def search_music(search_term: str) -> [AlbumInfo]:
     url = f"https://api.deezer.com/search?q={search_term}"
@@ -149,7 +160,21 @@ def search_music(search_term: str) -> [AlbumInfo]:
     return responses
 
 
-query = "phobia breaking benjamin"
 
-album_info = search_music(query)[0]
-album_info.download("Downloads")
+def main():
+    album_info = search_music(sys.argv[1])[0]
+
+    directory = sys.argv[2]
+
+    artist_path = path.join(directory, album_info.artist)
+    if not path.isdir(artist_path):
+        os.mkdir(artist_path)
+
+    album_path = path.join(artist_path, album_info.album)
+    if not path.isdir(album_path):
+        os.mkdir(album_path)
+
+
+    album_info.download(album_path)
+
+main()

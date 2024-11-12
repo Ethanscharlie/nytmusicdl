@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 Written by Ethanscharlie
 https://github.com/Ethanscharlie

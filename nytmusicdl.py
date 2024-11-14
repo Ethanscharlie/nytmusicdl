@@ -25,6 +25,7 @@ from PIL import Image
 
 VIDEO_FILE_EXT = "mp4"
 AUDIO_FILE_EXT = "mp3"
+PLAYLIST_FILTER = "&sp=EgIQAw%253D%253D"
 
 class AlbumInfo:
     def __init__(self, album: str, artist: str, cover_art_url: str, tracklist: [str]):
@@ -32,9 +33,12 @@ class AlbumInfo:
         self.artist = artist
         self.tracklist = tracklist
         self.cover_art_url = cover_art_url
+        self.yt_urls = [str]
 
     def download(self, folder: path):
         download_start_time = time.time()
+
+        self.yt_urls = self.search_album(f"{self.album} {self.artist}")
 
         self.cover_path = self._AlbumInfo__get_cover_art(self.cover_art_url, folder)
 
@@ -46,7 +50,7 @@ class AlbumInfo:
         print(f"Download took {download_time:.2f} seconds")
 
     def download_and_assign_metadata_to_song(self, folder: path, track_name: str, index: int):
-        track_url = self.search_song(f"{track_name} by {self.artist}, {self.album}")
+        track_url = self.yt_urls[index]
         self._AlbumInfo__download_video(track_url, track_name, folder)
         self._AlbumInfo__assign_metadata_to_file(path.join(folder, f"{track_name}.mp3"), track_name, index+1)
 
@@ -79,6 +83,58 @@ class AlbumInfo:
             raise Exception(f"Video not found at url {search_url}")
             
         return f"https://www.youtube.com/watch?v={video_links[0][:-1]}"
+
+    def get_videos_from_playlist(self, playlist_url: str) -> [str]:
+        response = requests.get(playlist_url)
+    
+        with open("test.html", "w+") as f:
+            f.write(response.text)
+    
+        start_index = response.text.index(r'')
+        end_index = response.text.index(r"innertubeCommand")
+        list_text = response.text[start_index : end_index]
+    
+        video_links = []
+        video_pattern = r'watch\?v=(.*?)"'
+        video_ids = re.findall(video_pattern, list_text)
+    
+        if not video_ids:
+            raise Exception(f"No watch links found on playlist page")
+    
+        for id in video_ids:
+            # Filter out
+            AndIndex = id.find("\\u0026")
+            if AndIndex == -1: continue
+            id = id[:AndIndex]
+    
+            video_url = f"https://www.youtube.com/watch?v={id}"
+            print(video_url)
+            video_links.append(video_url)
+            
+        return video_links
+    
+    
+    def search_album(self, query):
+        search_url = f"https://www.youtube.com/results?search_query={query.replace(' ', '+')}{PLAYLIST_FILTER}"
+        response = requests.get(search_url)
+        
+        pattern = r'playlist\?list=(.*?)"'
+        playlist_links = re.findall(pattern, response.text)
+    
+        if not playlist_links:
+            raise Exception(f"Nothing not found at search url {playlist_links}")
+    
+        for id in playlist_links:
+            playlist_url = f"https://www.youtube.com/playlist?list={playlist_links[0]}"
+            video_urls = self.get_videos_from_playlist(playlist_url)
+    
+            if (len(video_urls) > len(self.tracklist)):
+                print("Playlist is too long")
+                continue
+
+            return video_urls
+
+        raise Exception("No good playlists found")
 
     def __set_cover_art(self, audio_file_location: str, image_location: str):
         # Sets the album cover art of the file to the image

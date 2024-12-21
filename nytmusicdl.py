@@ -28,12 +28,12 @@ AUDIO_FILE_EXT = "mp3"
 PLAYLIST_FILTER = "&sp=EgIQAw%253D%253D"
 
 class AlbumInfo:
-    def __init__(self, album: str, artist: str, cover_art_url: str, tracklist: [str]):
+    def __init__(self, album: str, artist: str, cover_art_url: str, tracklist: []):
         self.album = album
         self.artist = artist
         self.tracklist = tracklist
         self.cover_art_url = cover_art_url
-        self.yt_urls = [str]
+        self.yt_urls = []
 
     def download(self, folder: path):
         download_start_time = time.time()
@@ -84,7 +84,7 @@ class AlbumInfo:
             
         return f"https://www.youtube.com/watch?v={video_links[0][:-1]}"
 
-    def get_videos_from_playlist(self, playlist_url: str) -> [str]:
+    def get_videos_from_playlist(self, playlist_url: str) -> []:
         response = requests.get(playlist_url)
     
         with open("test.html", "w+") as f:
@@ -184,7 +184,7 @@ def get_tracklist(url: str):
     if response.status_code != 200:
         raise Exception(responses.status_code)
     
-    tracklist = [str]
+    tracklist = []
     for track in response.json()["data"]:
         trackname = track["title"]
 

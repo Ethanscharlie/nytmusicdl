@@ -11,7 +11,6 @@ import os
 from os import path
 import re
 import time
-import moviepy.editor as mp
 import mutagen
 import requests
 import wget
@@ -76,7 +75,9 @@ def download(
             yt_urls.append(video_url)
 
         if len(yt_urls) > len(tracklist):
-            print(f"Playlist is too long, yt_urls: {len(yt_urls)}, tracklist: {len(tracklist)}")
+            print(
+                f"Playlist is too long, yt_urls: {len(yt_urls)}, tracklist: {len(tracklist)}"
+            )
             yt_urls = []
             continue
         else:
@@ -103,6 +104,7 @@ def download(
     print("\n")
     with concurrent.futures.ThreadPoolExecutor() as executor:
         for index, track_name in enumerate(tracklist):
+
             def download_and_assign_metadata_to_song(index: int, track_name: str):
                 track_url = yt_urls[index]
                 print(f"Name: {track_name}, Url: {track_url}, index: {index}")
@@ -186,10 +188,7 @@ def search_music(search_term: str) -> list[tuple[str, str, str, list[str]]]:
     item = data.get("data", [])[0]
     album_name = item.get("album", {}).get("title", "N/A")
     artist_name = item.get("artist", {}).get("name", "N/A")
-    cover_art = item.get("album", {}).get(
-        "cover_big", "N/A"
-    )  # Use cover_big for higher quality
-
+    cover_art = item.get("album", {}).get("cover_big", "N/A")
     tracklist = get_tracklist(item["album"]["tracklist"])
     responses.append((album_name, artist_name, cover_art, tracklist))
 
@@ -214,10 +213,12 @@ def general_filter(text: str) -> str:
 
 def main():
     if sys.argv[1] == "-h" or sys.argv[1] == "--help":
-        print("""usage: nytmusicdl.py ALBUMSEARCH <-- ex: \"Phobia Breaking Benjamin\"
+        print(
+            """usage: nytmusicdl.py ALBUMSEARCH <-- ex: \"Phobia Breaking Benjamin\"
 
 -a: Flag for downloading every album from an artist
-usage: nytmusicdl.py -a ARTISTSEARCH <-- ex: \"Breaking Benjamin\"""")
+usage: nytmusicdl.py -a ARTISTSEARCH <-- ex: \"Breaking Benjamin\""""
+        )
 
     elif sys.argv[1] == "-a":
         artist_name_search = sys.argv[2]

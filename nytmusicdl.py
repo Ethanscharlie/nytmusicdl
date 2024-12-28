@@ -132,7 +132,8 @@ def download(
                 # Set Cover art
                 if cover_path:
                     id3audio = MP3(audio_file, ID3=ID3)
-                    id3audio.tags.add(
+                    id3audio_tags: mutagen.id3.ID3 = id3audio.tags
+                    id3audio_tags.add(
                         APIC(
                             mime="image/jpeg",
                             type=3,

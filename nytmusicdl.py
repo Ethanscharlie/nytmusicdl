@@ -213,7 +213,13 @@ def general_filter(text: str) -> str:
 
 
 def main():
-    if sys.argv[1] == "-a":
+    if sys.argv[1] == "-h" or sys.argv[1] == "--help":
+        print("""usage: nytmusicdl.py ALBUMSEARCH <-- ex: \"Phobia Breaking Benjamin\"
+
+-a: Flag for downloading every album from an artist
+usage: nytmusicdl.py -a ARTISTSEARCH <-- ex: \"Breaking Benjamin\"""")
+
+    elif sys.argv[1] == "-a":
         artist_name_search = sys.argv[2]
         url = f"https://api.deezer.com/search/artist?q={artist_name_search}"
         response = requests.get(url)

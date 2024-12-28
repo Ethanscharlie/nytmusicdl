@@ -28,12 +28,12 @@ AUDIO_FILE_EXT = "mp3"
 PLAYLIST_FILTER = "&sp=EgIQAw%253D%253D"
 
 class AlbumInfo:
-    def __init__(self, album: str, artist: str, cover_art_url: str, tracklist: []):
+    def __init__(self, album: str, artist: str, cover_art_url: str, tracklist: [str]):
         self.album = album
         self.artist = artist
         self.tracklist = tracklist
         self.cover_art_url = cover_art_url
-        self.yt_urls = []
+        self.yt_urls = [str]
 
     def download(self, folder: path):
         download_start_time = time.time()
@@ -42,6 +42,7 @@ class AlbumInfo:
 
         self.cover_path = self._AlbumInfo__get_cover_art(self.cover_art_url, folder)
 
+        print("\n")
         with concurrent.futures.ThreadPoolExecutor() as executor:
             for index, track_name in enumerate(self.tracklist):
                 executor.submit(self.download_and_assign_metadata_to_song, folder, track_name, index)
@@ -51,6 +52,7 @@ class AlbumInfo:
 
     def download_and_assign_metadata_to_song(self, folder: path, track_name: str, index: int):
         track_url = self.yt_urls[index]
+        print(f"Name: {track_name}, Url: {track_url}, index: {index}")
         self._AlbumInfo__download_video(track_url, track_name, folder)
         self._AlbumInfo__assign_metadata_to_file(path.join(folder, f"{track_name}.mp3"), track_name, index+1)
 
@@ -84,7 +86,7 @@ class AlbumInfo:
             
         return f"https://www.youtube.com/watch?v={video_links[0][:-1]}"
 
-    def get_videos_from_playlist(self, playlist_url: str) -> []:
+    def get_videos_from_playlist(self, playlist_url: str) -> [str]:
         response = requests.get(playlist_url)
     
         with open("test.html", "w+") as f:
@@ -123,9 +125,12 @@ class AlbumInfo:
     
         if not playlist_links:
             raise Exception(f"Nothing not found at search url {playlist_links}")
+
+        print(playlist_links)
     
         for id in playlist_links:
-            playlist_url = f"https://www.youtube.com/playlist?list={playlist_links[0]}"
+            playlist_url = f"https://www.youtube.com/playlist?list={id}"
+            print(playlist_url)
             video_urls = self.get_videos_from_playlist(playlist_url)
     
             if (len(video_urls) > len(self.tracklist)):
@@ -169,14 +174,14 @@ class AlbumInfo:
 
     def __download_video(self, url: str, filename: str, folder: path) -> None:
         current_directory = os.getcwd()
-        os.system(f"cd {folder}")
+        os.system(f"cd '{folder}'")
 
         if str(filename) != "<class 'str'>":
             command = f'yt-dlp -x --audio-format mp3 -o "{folder}/{filename}.%(ext)s" {url}'
             print(command)
             os.system(command)
 
-        os.system(f"cd {current_directory}")
+        os.system(f"cd '{current_directory}'")
 
 def get_tracklist(url: str):
     response = requests.get(url)
@@ -191,10 +196,14 @@ def get_tracklist(url: str):
         if not trackname:
             continue
 
+        if not len(trackname) > 0:
+            continue
+
         trackname = trackname.replace(r"/", "|")
         tracklist.append(trackname)
         print(trackname)
 
+    print(tracklist)
     return tracklist
 
 def search_music(search_term: str) -> [AlbumInfo]:
@@ -217,20 +226,74 @@ def search_music(search_term: str) -> [AlbumInfo]:
 
     return responses
 
+def general_filter(text: str) -> str:
+    text = text.replace("/", "-")
+    text = text.replace(r"\\", "-")
+    text = text.replace("&", "and")
+    text = text.replace(":", " -")
+    text = text.replace(",", " -")
+    text = text.replace("\"", " ")
+    text = text.replace("\'", " ")
+    text = text.replace("?", " ")
+    text = text.replace("*", " ")
+    text = text.replace("<", "(")
+    text = text.replace(">", ")")
+    text = text.replace("|", "-")
+    return text
+
 def main():
-    album_info = search_music(sys.argv[1])[0]
+    if (sys.argv[1] == "-a"):
+        artist_name_search = sys.argv[2]
+        url = f"https://api.deezer.com/search/artist?q={artist_name_search}"
+        response = requests.get(url)
+        artist_name = general_filter(response.json().get('data', [])[0]["name"])
+        artist_id = response.json().get('data', [])[0]["id"]
 
-    directory = sys.argv[2]
+        url = f"https://api.deezer.com/artist/{artist_id}/albums?limit=1000"
+        response = requests.get(url)
 
-    artist_path = path.join(directory, album_info.artist)
-    if not path.isdir(artist_path):
-        os.mkdir(artist_path)
+        if response.status_code != 200:
+            raise Exception(responses.status_code)
 
-    album_path = path.join(artist_path, album_info.album)
-    if not path.isdir(album_path):
-        os.mkdir(album_path)
+        data = response.json()
+
+        for album_data in data.get('data', []):
+            album_name = general_filter(album_data["title"])
+            cover_art = album_data["cover_big"]
+            tracklist = get_tracklist(album_data["tracklist"])
+
+            album_info = AlbumInfo(album_name, artist_name, cover_art, tracklist)
+
+            directory = sys.argv[2]
+
+            artist_path = path.join(directory, album_info.artist)
+            if not path.isdir(artist_path):
+                os.mkdir(artist_path)
+
+            album_path = path.join(artist_path, album_info.album)
+            if not path.isdir(album_path):
+                os.mkdir(album_path)
 
 
-    album_info.download(album_path)
+            try:
+                album_info.download(album_path)
+            except Exception:
+                print("WARNING A PLAYLIST COULD NOT BE FOUND")
+
+    else:
+        album_info = search_music(sys.argv[1])[0]
+
+        directory = sys.argv[2]
+
+        artist_path = path.join(directory, album_info.artist)
+        if not path.isdir(artist_path):
+            os.mkdir(artist_path)
+
+        album_path = path.join(artist_path, album_info.album)
+        if not path.isdir(album_path):
+            os.mkdir(album_path)
+
+
+        album_info.download(album_path)
 
 main()
